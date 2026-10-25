@@ -1,0 +1,269 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("ADMIN")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Product {
+  id                     String           @id @default(uuid())
+  name                   String
+  slug                   String           @unique
+  sku                    String           @unique
+  shortDescription       String
+  fullDescription        String
+  categoryId             String
+  category               Category         @relation(fields: [categoryId], references: [id])
+  embroideryType         String           // "HANDMADE", "MACHINE", "MIXED", "NONE"
+  suitType               String           // "READY_MADE", "UNSTITCHED", "SEMI_STITCHED", "CUSTOM"
+  price                  Float
+  originalPrice          Float?
+  fabric                 String
+  color                  String
+  stock                  Int              @default(10)
+  isAvailable            Boolean          @default(true)
+  isFeatured             Boolean          @default(false)
+  isNewArrival           Boolean          @default(false)
+  processingTime         String           @default("2-4 Business Days")
+  shippingInfo           String           @default("Ships across India within 3-5 days")
+  customizationAvailable Boolean          @default(true)
+  tags                   String           @default("punjabi suit, ethnic wear")
+  disclaimer             String?
+  seoTitle               String?
+  seoDescription         String?
+  videoUrl               String?
+  images                 ProductImage[]
+  variants               ProductVariant[]
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String   @default("Punjabi Suit Image")
+  isPrimary Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model ProductVariant {
+  id              String   @id @default(uuid())
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size            String   // "Unstitched", "XS", "S", "M", "L", "XL", "XXL"
+  color           String
+  stitchingOption String   @default("Unstitched Fabric") // "Unstitched Fabric", "Standard Stitching", "Custom Boutique Fit"
+  priceAdjustment Float    @default(0)
+  stock           Int      @default(5)
+  sku             String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  description String?
+  imageUrl    String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Order {
+  id               String               @id @default(uuid())
+  orderNumber      String               @unique
+  customerName     String
+  customerEmail    String
+  customerPhone    String
+  shippingAddress  String
+  city             String
+  state            String
+  postalCode       String
+  country          String               @default("India")
+  customerNotes    String?
+  subtotal         Float
+  discount         Float                @default(0)
+  shippingFee      Float                @default(0)
+  tax              Float                @default(0)
+  totalAmount      Float
+  paymentMethod    String               // "COD", "ONLINE_RAZORPAY", "MANUAL_UPI"
+  paymentStatus    String               @default("UNPAID") // "UNPAID", "PAID", "FAILED", "REFUNDED"
+  paymentReference String?
+  orderStatus      String               @default("PENDING") // "PENDING", "CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"
+  couponCode       String?
+  items            OrderItem[]
+  statusHistory    OrderStatusHistory[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+}
+
+model OrderItem {
+  id              String  @id @default(uuid())
+  orderId         String
+  order           Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId       String
+  productName     String
+  productSku      String
+  productImage    String
+  variantId       String?
+  size            String
+  color           String
+  stitchingOption String  @default("Unstitched Fabric")
+  unitPrice       Float
+  quantity        Int     @default(1)
+  totalPrice      Float
+}
+
+model OrderStatusHistory {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    String
+  note      String?
+  changedBy String   @default("System")
+  createdAt DateTime @default(now())
+}
+
+model CustomInquiry {
+  id               String   @id @default(uuid())
+  inquiryNumber    String   @unique
+  customerName     String
+  customerPhone    String
+  customerEmail    String?
+  embroideryType   String
+  suitType         String
+  fabricPreference String
+  colorPreference  String
+  targetDate       String?
+  budgetRange      String?
+  requirements     String
+  referenceImage   String?
+  status           String   @default("NEW") // "NEW", "CONTACTED", "DESIGNING", "QUOTED", "ACCEPTED", "CLOSED"
+  adminNotes       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Coupon {
+  id             String    @id @default(uuid())
+  code           String    @unique
+  discountType   String    // "PERCENTAGE", "FIXED"
+  discountValue  Float
+  minOrderAmount Float     @default(0)
+  maxDiscount    Float?
+  usageLimit     Int?
+  timesUsed      Int       @default(0)
+  startDate      DateTime?
+  expiryDate     DateTime?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Review {
+  id           String   @id @default(uuid())
+  productId    String?
+  customerName String
+  customerCity String?
+  rating       Int      @default(5)
+  comment      String
+  isVerified   Boolean  @default(false)
+  isPublished  Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model NewsletterSubscriber {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  isActive     Boolean  @default(true)
+  consentGiven Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model StoreSettings {
+  id                    String   @id @default("default")
+  storeName             String   @default("PUNJAB ROYAL SUITS")
+  tagline               String   @default("Exquisite Punjabi Suits & Royal Craftsmanship")
+  logoUrl               String?
+  faviconUrl            String?
+  businessEmail         String   @default("contact@punjabroyalsuits.com")
+  phone                 String   @default("+91 98765 43210")
+  whatsappNumber        String   @default("+91 98765 43210")
+  address               String   @default("Heritage Chowk, Near Golden Temple, Amritsar, Punjab, India")
+  currencyCode          String   @default("INR")
+  currencySymbol        String   @default("₹")
+  freeShippingThreshold Float    @default(2999)
+  standardShippingFee   Float    @default(150)
+  taxPercentage         Float    @default(5.0)
+  enableCOD             Boolean  @default(true)
+  enableOnlinePayment   Boolean  @default(true)
+  razorpayKeyId         String?
+  razorpayKeySecret     String?
+  manualUpiId           String?  @default("punjabroyalsuits@upi")
+  announcementText      String?  @default("✨ Festive Offer: Complimentary Bespoke Stitching on Orders Above ₹4,999! Express Worldwide Delivery available.")
+  showAnnouncement      Boolean  @default(true)
+  isMaintenanceMode     Boolean  @default(false)
+  instagramUrl          String?  @default("https://instagram.com")
+  facebookUrl           String?  @default("https://facebook.com")
+  pinterestUrl          String?  @default("https://pinterest.com")
+  youtubeUrl            String?  @default("https://youtube.com")
+  updatedAt             DateTime @updatedAt
+}
+
+model HomepageContent {
+  id                   String   @id @default("default")
+  heroTitle            String   @default("Royal Punjabi Elegance, Handcrafted with Heritage")
+  heroSubtitle         String   @default("Discover heirloom Phulkari, intricate Zardozi, and modern Punjabi silhouettes tailored for weddings, festivals, and celebratory moments.")
+  heroBannerUrl        String   @default("/assets/hero_punjabi_suit.jpg")
+  heroCtaText          String   @default("Explore Collection")
+  heroCtaLink          String   @default("/shop")
+  secondaryCtaText     String   @default("Custom Embroidery Order")
+  secondaryCtaLink     String   @default("/custom-orders")
+  brandStoryTitle      String   @default("Preserving the Royal Art of Punjabi Needlework")
+  brandStoryText       String   @default("At Punjab Royal Suits, every ensemble is a tribute to centuries-old Punjabi sartorial royalty. Rooted in the artisan traditions of Amritsar, Patiala, and Ludhiana, our master craftsmen hand-weave intricate Zardozi, Resham threadwork, Gota Patti, and traditional Phulkari motifs onto the finest pure silks, georgettes, and chanderis.")
+  brandStoryImage      String?  @default("/assets/artisan_craft.jpg")
+  comparisonTitle      String   @default("Handmade vs Machine Embroidery: Craftsmanship Guide")
+  handmadeDescription  String   @default("Each handmade motif is painstakingly created by master artisans over days or weeks using traditional needlework, wooden embroidery frames (Adda), and fine gold & silk threads. Every piece possesses unique human character and heirloom value.")
+  machineDescription   String   @default("High-precision computerized multi-head embroidery ensures exact symmetry, crisp borders, and durable thread retention at accessible price points, perfect for contemporary festive and everyday ethnic elegance.")
+  customBannerTitle    String   @default("Have a Dream Punjabi Suit in Mind?")
+  customBannerText     String   @default("From bespoke bridal lehenga-suits to personalized color palettes and custom embroidery patterns, our master designers bring your vision to life.")
+  updatedAt            DateTime @updatedAt
+}
+
+model Policy {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  content     String
+  isPublished Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+}
+
+model AdminActivityLog {
+  id         String   @id @default(uuid())
+  adminEmail String
+  action     String
+  details    String
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+}
